@@ -53,6 +53,7 @@ class ServiceNowAdapter extends EventEmitter {
    * @param {string} id - Adapter instance's ID.
    * @param {ServiceNowAdapter~adapterProperties} adapterProperties - Adapter instance's properties object.
    */
+
   constructor(id, adapterProperties) {
     // Call super or parent class' constructor.
     super();
@@ -94,6 +95,7 @@ class ServiceNowAdapter extends EventEmitter {
  *   that handles the response.
  */
 healthcheck(callback) {
+    
  this.getRecord((result, error) => {
    /**
     * For this lab, complete the if else conditional
@@ -101,6 +103,7 @@ healthcheck(callback) {
     * or the instance was hibernating. You must write
     * the blocks for each branch.
     */
+    
    if (error) {
      /**
       * Write this block.
@@ -114,10 +117,16 @@ healthcheck(callback) {
       * healthcheck(), execute it passing the error seen as an argument
       * for the callback's errorMessage parameter.
       */
+
       this.emitOffline();
-      log.info(`ServiceNow OFFLINE`);
-      log.error(`Returned error: ${JSON.stringify(error)}`);
-      log.error(`Error: ServiceNow is OFFLINE: ${JSON.stringify(this.id)}`);
+      log.error(`ServiceNow: healthcheck error ID: ${this.id} ${JSON.stringify(error)}`);
+
+      if( callback ) {
+            callback(null, error);
+      }
+
+      return error;
+
    } else {
      /**
       * Write this block.
@@ -129,11 +138,16 @@ healthcheck(callback) {
       * parameter as an argument for the callback function's
       * responseData parameter.
       */
+
       this.emitOnline();
-     log.info(`ServiceNow ONLINE`);
-     log.debug(`\nServiceNow Instance ID=' + this.id + '\n is ONLINE. Result=+ ${JSON.stringify(result)}`);
-   } 
-   if (callback) callback(result, error);
+      log.debug(`ServiceNow: healthcheck successful ID: ${this.id}`);
+
+      if( callback ) {
+            callback(result, null);
+      }
+
+      return result;
+   }
  });
 }
 
@@ -146,7 +160,7 @@ healthcheck(callback) {
    */
   emitOffline() {
     this.emitStatus('OFFLINE');
-    log.warn('ServiceNow: Instance is unavailable.');
+    log.warn(`ServiceNow: Instance is unavailable ID: ${this.id}`);
   }
 
   /**
@@ -158,7 +172,7 @@ healthcheck(callback) {
    */
   emitOnline() {
     this.emitStatus('ONLINE');
-    log.info('ServiceNow: Instance is available.');
+    log.info(`ServiceNow: Instance is available ID: ${this.id}`);
   }
 
   /**
@@ -171,7 +185,7 @@ healthcheck(callback) {
    * @param {string} status - The event to emit.
    */
   emitStatus(status) {
-    this.emit(status, { id: this.id });
+    this.emit(status, { ID: this.id });
   }
 
   /**
@@ -190,28 +204,12 @@ healthcheck(callback) {
      * Note how the object was instantiated in the constructor().
      * get() takes a callback function.
      */
-     var changeTicket = [];
      this.connector.get((data, error) => {
-      if (error) {
-      console.error(`\nError returned from GET request:\n${JSON.stringify(error)}`);
-     } else {
-        if (typeof data === 'object' && 'body' in data) {
-          const jsonBody = JSON.parse(data.body); 
-          for (var i in jsonBody.result) {
-            changeTicket.push({
-              "change_ticket_number" : jsonBody.result[i].number,
-              "active" : jsonBody.result[i].active,
-              "priority" : jsonBody.result[i].priority,
-              "description" : jsonBody.result[i].description,
-              "work_start" : jsonBody.result[i].work_start,
-              "work_end" : jsonBody.result[i].work_end,
-              "change_ticket_key" : jsonBody.result[i].sys_id
-              });
-          }
-        } 
-      } 
-      return callback(changeTicket, error); 
-    });
+        if (error) {
+          return callback(null, error);
+        }     
+        return callback(data, null );
+      });
   }
 
   /**
@@ -230,27 +228,12 @@ healthcheck(callback) {
      * Note how the object was instantiated in the constructor().
      * post() takes a callback function.
      */
-     var changeTicket = [];
-
-     this.connector.post((data, error) => {
-      if (error) {
-      console.error(`\nError returned from POST request:\n${JSON.stringify(error)}`);
-     } else {
-        if (typeof data === 'object' && 'body' in data) {
-          const jsonBody = JSON.parse(data.body); 
-          changeTicket = {
-            change_ticket_number: jsonBody.result.number,
-            active: jsonBody.result.active,
-            priority: jsonBody.result.priority,
-            description: jsonBody.result.description,
-            work_start: jsonBody.result.work_start,
-            work_end: jsonBody.result.work_end,
-            change_ticket_key: jsonBody.result.sys_id
-          } 
-        } 
-      } 
-    return callback(changeTicket, error);
-    });
+      this.post((data, error) => {
+          if (error) {
+            return callback(null, error);
+          }
+          return callback(data, null);
+        });
   }
 }
 
